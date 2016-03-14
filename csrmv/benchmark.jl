@@ -1,4 +1,4 @@
-using FactCheck
+using FactCheck, JLD
 include("funk.jl")
 function benchmark(k)
 
@@ -32,3 +32,30 @@ function run_benchmark()
 		benchmark(k)
 	end
 end
+
+function warmup()
+	a = sprand(100,100,0.1)
+	b = rand(100)
+	ad = CudaSparseMatrixCSR(a)
+	bd = CudaArray(b)
+	ad * bd
+	info("warmup done.")
+end
+
+function realdata_benchmark()
+	warmup()
+	a = load("../graph.jld")["T"]
+	colptr = deepcopy(a.colptr)
+	final = colptr[end]
+	extra = fill(final, a.m - 473)
+	append!(colptr, extra)
+	amod = SparseMatrixCSC(a.m, a.m, colptr, a.rowval, a.nzval)
+	amod = round(Float64, amod)
+	b = zeros(size(amod,1))
+	b[1] = 1
+	@time amod * b
+	ad = CudaSparseMatrixCSR(amod)
+	bd  = CudaArray(b)
+	t1 = @elapsed ad * bd
+	println("Time taken for csrmv = $t1")
+end 
