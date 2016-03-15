@@ -1,8 +1,7 @@
 using JLD
 using Gunrock
 
-function init_parts()
-    a = load("../graph.jld")["T"]
+function init_parts(a::SparseMatrixCSC)
     I, J, V = findnz(a)
     len = Int(length(I)/2)
     i1 = I[1:len]
@@ -27,11 +26,12 @@ function makesquare(a::SparseMatrixCSC)
     amod = amod + amod'
 end
 
-function main()
+function setup()
+    a = load("../graph.jld")["T"]
     info("Reading input . . .")
-    a1, a2 = init_parts()
+    a1, a2 = init_parts(a)
     info("Done.")
-    scores = Array(Float32, size(a1, 1))
+    scores = Array(Float32, size(a, 1))
     info("Calculating pagerank for the first timestep")
     n1, r1 = pagerank(a1)
     info("Updating scores.")
@@ -40,5 +40,62 @@ function main()
     n2, r2 = pagerank(a2)
     info("Updating scores.")
     scores[n2] += r2
-    scores
+    amod = makesquare(a)
+    amod , scores
+end
+
+function generate_new_graph(l::Integer)
+    a = sprand(l, l, 1/l)
+    a + a'
+end
+
+function monitor(a_original::SparseMatrixCSC, scores::Vector{Float32})
+    l = size(a_original, 1)
+    i = 3
+    while i<=20
+        #Normalize scores
+        scores = scores / sum(scores)
+        
+        #Iteration
+        info("Time step $i")
+
+        #New set of activity
+        a_new = generate_new_graph(l)
+    
+        #Update state
+        a_updated = a_original + a_new
+        
+        #perform pagerank
+        n, r = pagerank(a_updated)
+
+        #Normalize scores
+        r = r / sum(r)
+        
+        #Difference and normalize
+        diff = abs(scores[n] - r)
+
+        #Find max diff
+        val, pos = findmax(diff)
+        @show val
+
+        #Check if diff is too much
+        if val > 0.15
+            node = n[pos]
+            info("Alert at node $node !")
+            break
+        end
+
+        #Update scores
+        scores = scores + diff
+    
+        #Update Iteration
+        i += 1
+
+    end
+    a_original, scores
+end
+
+function driver()
+    a_original, scores = setup()
+    a, s = monitor(a_original, scores)
 end
