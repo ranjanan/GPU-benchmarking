@@ -1,4 +1,4 @@
-function cluster(G::SparseMatrixCSC)
+function cluster(a::SparseMatrixCSC)
     n = size(a, 1)
     G = map(Int, map(Bool,a) | map(Bool, speye(n)))
     val = maximum(a,2)
