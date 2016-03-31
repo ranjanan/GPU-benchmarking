@@ -99,3 +99,7 @@ function driver()
     a_original, scores = setup()
     a, s = monitor(a_original, scores)
 end
+
+a,s = driver() #Set up 20 time steps
+s[100] = 1 #Set dramatic deviation
+monitor(a,s) #Start monitoring again
